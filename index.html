@@ -2,33 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Feather Force // Bluejay & Cardinal</title>
   <style>
-    :root{
-      --bg:#0a1020;--bg2:#101a33;--panel:#111a2e;--line:#2a3d73;--text:#eaf1ff;
-      --blue:#49a4ff;--red:#ff5a67;--gold:#ffd166;--ok:#34d399;
-    }
-    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:radial-gradient(1200px 700px at 50% -10%,#1a2a54 0,var(--bg) 45%,#070b16 100%);color:var(--text)}
-    .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
-    .top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    .brand{font-weight:800;letter-spacing:.5px}
-    .brand .b{color:var(--blue)} .brand .r{color:var(--red)}
+    :root{--bg:#070c18;--panel:#111a30;--line:#2d447d;--text:#eaf1ff;--blue:#49a4ff;--red:#ff5a67;--gold:#ffd166;}
+    *{box-sizing:border-box} body{margin:0;color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:radial-gradient(1300px 800px at 50% -20%,#243f7a 0,#0b1226 42%,#060913 100%)}
+    .wrap{max-width:1100px;margin:10px auto;padding:10px}
+    .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+    .brand{font-weight:900;letter-spacing:.4px;text-shadow:0 2px 16px rgba(90,170,255,.35)}
+    .brand b:first-child{color:var(--blue)} .brand b:last-child{color:var(--red)}
     .controls{display:flex;gap:8px;flex-wrap:wrap}
-    .controls input,.controls button,.controls select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:10px}
+    .controls input,.controls button,.controls select{background:#0f1730;border:1px solid var(--line);color:var(--text);padding:9px 10px;border-radius:10px}
     .controls button{cursor:pointer}
-    .controls button:hover{filter:brightness(1.12)}
-    .hud{display:flex;gap:12px;margin:10px 0 14px;flex-wrap:wrap}
-    .chip{background:#0f1730;border:1px solid #29417f;border-radius:999px;padding:6px 10px;font-size:13px}
-    canvas{width:100%;max-width:1060px;height:auto;border:1px solid #2d427d;border-radius:14px;background:linear-gradient(#091224,#050912);box-shadow:0 18px 50px rgba(0,0,0,.45)}
-    .note{opacity:.85;font-size:12px;margin-top:8px}
+    .hud{display:flex;gap:10px;margin:10px 0;flex-wrap:wrap}
+    .chip{background:#0f1730;border:1px solid #2f4682;border-radius:999px;padding:6px 10px;font-size:13px}
+    .frame{position:relative}
+    canvas{width:100%;height:auto;border:1px solid #2f4682;border-radius:14px;background:#050a14;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+
+    .touch{display:none;position:absolute;inset:0;pointer-events:none}
+    .joy{position:absolute;left:16px;bottom:18px;width:128px;height:128px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);pointer-events:auto;touch-action:none}
+    .stick{position:absolute;left:44px;top:44px;width:40px;height:40px;border-radius:50%;background:rgba(73,164,255,.9);box-shadow:0 0 18px rgba(73,164,255,.9)}
+    .btn{position:absolute;right:18px;bottom:22px;width:86px;height:86px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:22px;background:rgba(255,90,103,.85);border:1px solid rgba(255,255,255,.35);box-shadow:0 0 20px rgba(255,90,103,.6);pointer-events:auto;touch-action:none}
+
+    @media (max-width: 900px){
+      .touch{display:block}
+      .chip.hide-mobile{display:none}
+      .controls input{min-width:130px}
+    }
   </style>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <div class="brand">FEATHER FORCE // <span class="b">BLUEJAY</span> + <span class="r">CARDINAL</span></div>
+    <div class="brand">FEATHER FORCE // <b>BLUEJAY</b> + <b>CARDINAL</b></div>
     <div class="controls">
       <select id="birdSel"><option value="jay">Bluejay</option><option value="cardinal">Cardinal</option></select>
       <input id="room" placeholder="room code (e.g. NEST-42)" />
@@ -40,130 +47,197 @@
     <div class="chip" id="conn">Offline</div>
     <div class="chip" id="score">Score: 0</div>
     <div class="chip" id="lives">Lives: 3</div>
-    <div class="chip">WASD / Arrows move · J shoot</div>
+    <div class="chip hide-mobile">Keyboard: WASD/Arrows + J</div>
+    <div class="chip">Mobile: joystick + FIRE</div>
   </div>
-  <canvas id="game" width="1060" height="600"></canvas>
-  <div class="note">Online co-op: host creates room; partner joins same code. Host simulates enemies; client syncs live via WebRTC.</div>
+  <div class="frame">
+    <canvas id="game" width="1060" height="600"></canvas>
+    <div class="touch" id="touch">
+      <div class="joy" id="joy"><div class="stick" id="stick"></div></div>
+      <div class="btn" id="fireBtn">FIRE</div>
+    </div>
+  </div>
 </div>
 <script>
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const W=canvas.width,H=canvas.height;
-const state={players:{},bullets:[],enemies:[],stars:[],score:0,lives:3,host:false,me:null,conn:null,peer:null,tick:0,gameOver:false};
-const keys={}; for(let i=0;i<160;i++)state.stars.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()*2+1,v:Math.random()*0.6+0.2});
+const keys={},touch={mx:0,my:0,fire:false,active:false};
+const state={players:{},bullets:[],enemies:[],stars:[],score:0,lives:3,host:false,me:null,conn:null,peer:null,tick:0,gameOver:false,boom:[]};
+
+for(let i=0;i<220;i++)state.stars.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()*2+1,v:Math.random()*1.1+0.2});
 const hud={conn:document.getElementById('conn'),score:document.getElementById('score'),lives:document.getElementById('lives')};
 
+const joy=document.getElementById('joy'),stick=document.getElementById('stick'),fireBtn=document.getElementById('fireBtn');
+let joyCenter={x:0,y:0};
+function setConn(t,ok){hud.conn.textContent=t;hud.conn.style.borderColor=ok?'#2f9f73':'#8e2a4b'}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-function makePlayer(id,bird,x,y){return{id,bird,x,y,vx:0,vy:0,speed:4.1,cool:0,hp:3,dir:1};}
-function colorBird(b){return b==='jay'?'#49a4ff':'#ff5a67'}
 function roomId(raw){return 'ff-'+(raw||'nest').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,24)}
+function colorBird(b){return b==='jay'?'#49a4ff':'#ff5a67'}
+function mk(id,bird,x,y){return{id,bird,x,y,vx:0,vy:0,speed:4.2,cool:0,hp:3,dir:1};}
 
-function drawBird(p){
+function drawBackground(){
+  // sky glow
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#12294f'); g.addColorStop(.55,'#091427'); g.addColorStop(1,'#050a14');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // mountains
+  for(let l=0;l<3;l++){
+    ctx.fillStyle=['#0d1a34','#101f3f','#14264c'][l];
+    ctx.beginPath(); ctx.moveTo(0,H);
+    for(let x=0;x<=W;x+=80){
+      const y=H-140-l*50-Math.sin((x+state.tick*(.4+l*.2))/140)*20-Math.random()*8;
+      ctx.lineTo(x,y);
+    }
+    ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+  }
+  // stars
+  for(const s of state.stars){ s.x-=s.v; if(s.x<0)s.x=W; ctx.fillStyle='rgba(255,255,255,.75)'; ctx.fillRect(s.x,s.y,s.s,s.s); }
+}
+
+function birdSprite(p){
   ctx.save(); ctx.translate(p.x,p.y); ctx.scale(p.dir,1);
   const c=colorBird(p.bird);
-  ctx.fillStyle=c; ctx.beginPath(); ctx.ellipse(0,0,22,14,0,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#dfe9ff'; ctx.beginPath(); ctx.arc(-6,-4,4,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(-7,-4,1.2,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.moveTo(16,-2); ctx.lineTo(28,1); ctx.lineTo(16,4); ctx.closePath(); ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(-2,4,11,5,0,0,Math.PI*2); ctx.fill();
+  // body
+  ctx.fillStyle=c; ctx.beginPath(); ctx.ellipse(0,0,24,15,0,0,Math.PI*2); ctx.fill();
+  // wing
+  ctx.fillStyle='rgba(255,255,255,.22)'; ctx.beginPath(); ctx.ellipse(-3,4,12,6,0,0,Math.PI*2); ctx.fill();
+  // eye
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-7,-4,4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#101'; ctx.beginPath(); ctx.arc(-8,-4,1.3,0,Math.PI*2); ctx.fill();
+  // beak
+  ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.moveTo(16,-2); ctx.lineTo(31,1); ctx.lineTo(16,4); ctx.closePath(); ctx.fill();
+  // outline glow
+  ctx.strokeStyle='rgba(255,255,255,.2)'; ctx.lineWidth=1; ctx.stroke();
   ctx.restore();
 }
-function shoot(p){ if(p.cool>0||state.gameOver)return; p.cool=10; state.bullets.push({x:p.x+p.dir*28,y:p.y,vx:p.dir*9,owner:p.id}); }
+
+function shoot(p){if(p.cool>0||state.gameOver)return; p.cool=9; state.bullets.push({x:p.x+p.dir*30,y:p.y,vx:p.dir*10,owner:p.id});}
 function spawnEnemy(){
-  const side=Math.random()<.5?0:1,x=side?W+30:-30,y=90+Math.random()*(H-180);
-  state.enemies.push({x,y,vx:side?- (2+Math.random()*1.8):(2+Math.random()*1.8),hp:2,r:18});
+  const right=Math.random()<.5; const x=right?W+35:-35; const y=80+Math.random()*(H-170);
+  state.enemies.push({x,y,vx:right?-(2.1+Math.random()*1.9):(2.1+Math.random()*1.9),hp:2,r:17,hue:Math.random()*50+260});
 }
 
-function updateLocal(){
+function updateInput(){
   const me=state.players[state.me]; if(!me||state.gameOver)return;
-  const left=keys['ArrowLeft']||keys['a'],right=keys['ArrowRight']||keys['d'],up=keys['ArrowUp']||keys['w'],down=keys['ArrowDown']||keys['s'];
-  me.vx=(right?1:0)-(left?1:0); me.vy=(down?1:0)-(up?1:0);
-  me.x=clamp(me.x+me.vx*me.speed,30,W-30); me.y=clamp(me.y+me.vy*me.speed,50,H-30);
-  if(me.vx!==0)me.dir=me.vx>0?1:-1;
-  if((keys['j']||keys[' '])) shoot(me);
+  let lx=((keys['ArrowRight']||keys['d'])?1:0)-((keys['ArrowLeft']||keys['a'])?1:0);
+  let ly=((keys['ArrowDown']||keys['s'])?1:0)-((keys['ArrowUp']||keys['w'])?1:0);
+  if(touch.active){lx=touch.mx; ly=touch.my;}
+  me.x=clamp(me.x+lx*me.speed,28,W-28); me.y=clamp(me.y+ly*me.speed,46,H-28);
+  if(Math.abs(lx)>.05) me.dir=lx>0?1:-1;
+  if(keys['j']||keys[' ']||touch.fire) shoot(me);
   if(me.cool>0)me.cool--;
 }
 
 function hostSim(){
-  if(state.tick%52===0)spawnEnemy();
-  for(const b of state.bullets){b.x+=b.vx}
-  state.bullets=state.bullets.filter(b=>b.x>-40&&b.x<W+40);
-  for(const e of state.enemies){e.x+=e.vx}
+  if(state.tick%46===0)spawnEnemy();
+  for(const b of state.bullets)b.x+=b.vx;
+  state.bullets=state.bullets.filter(b=>b.x>-60&&b.x<W+60);
+  for(const e of state.enemies)e.x+=e.vx;
+
   for(const e of state.enemies){
     for(const b of state.bullets){
-      const dx=e.x-b.x,dy=e.y-b.y;if(dx*dx+dy*dy< (e.r+4)*(e.r+4)){e.hp--; b.x=1e9; if(e.hp<=0){state.score+=100;e.dead=true;}}
+      const dx=e.x-b.x,dy=e.y-b.y;
+      if(dx*dx+dy*dy<(e.r+5)*(e.r+5)){e.hp--; b.x=1e9; if(e.hp<=0){e.dead=true; state.score+=120; state.boom.push({x:e.x,y:e.y,t:16});}}
     }
-    for(const id in state.players){const p=state.players[id];const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy< (e.r+16)*(e.r+16)){e.dead=true;state.lives--; if(state.lives<=0)state.gameOver=true;}}
+    for(const id in state.players){
+      const p=state.players[id],dx=e.x-p.x,dy=e.y-p.y;
+      if(dx*dx+dy*dy<(e.r+16)*(e.r+16)){e.dead=true; state.boom.push({x:p.x,y:p.y,t:12}); state.lives--; if(state.lives<=0)state.gameOver=true;}
+    }
   }
-  state.enemies=state.enemies.filter(e=>!e.dead&&e.x>-60&&e.x<W+60);
+  state.enemies=state.enemies.filter(e=>!e.dead&&e.x>-80&&e.x<W+80);
+  state.boom=state.boom.filter(b=>--b.t>0);
+
+  if(state.conn&&state.conn._input){
+    const i=state.conn._input, p=state.players.peer;
+    if(p){p.x=i.x;p.y=i.y;p.dir=i.dir;p.bird=i.bird||p.bird;if(i.shoot)shoot(p);} }
 }
 
 function draw(){
-  ctx.clearRect(0,0,W,H);
-  // stars/parallax
-  for(const s of state.stars){s.x-=s.v; if(s.x<0)s.x=W; ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(s.x,s.y,s.s,s.s)}
-  ctx.strokeStyle='rgba(80,120,220,.22)'; for(let i=0;i<6;i++){ctx.beginPath();ctx.moveTo(0,90+i*80);ctx.lineTo(W,90+i*80);ctx.stroke();}
-  for(const b of state.bullets){ctx.fillStyle='#ffd166';ctx.fillRect(b.x-4,b.y-2,8,4)}
-  for(const e of state.enemies){ctx.fillStyle='#8b5cf6';ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f8f';ctx.fillRect(e.x-8,e.y-2,16,4)}
-  Object.values(state.players).forEach(drawBird);
-  if(state.gameOver){ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.font='700 56px system-ui';ctx.fillText('GAME OVER',W/2-170,H/2);ctx.font='500 26px system-ui';ctx.fillText('Refresh or host/join a new room',W/2-170,H/2+46)}
-  hud.score.textContent='Score: '+state.score; hud.lives.textContent='Lives: '+state.lives;
+  drawBackground();
+  for(const b of state.bullets){ctx.fillStyle='#ffd166'; ctx.shadowColor='#ffd166'; ctx.shadowBlur=10; ctx.fillRect(b.x-5,b.y-2.5,10,5); ctx.shadowBlur=0;}
+  for(const e of state.enemies){
+    ctx.fillStyle=`hsl(${e.hue} 80% 58%)`; ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(e.x-9,e.y-2,18,4);
+  }
+  for(const p of Object.values(state.players)) birdSprite(p);
+  for(const x of state.boom){ctx.strokeStyle=`rgba(255,209,102,${x.t/18})`; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x.x,x.y,24-x.t,0,Math.PI*2); ctx.stroke();}
+
+  if(state.gameOver){ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font='700 62px system-ui'; ctx.fillText('GAME OVER',W/2-180,H/2);}
+
+  hud.score.textContent='Score: '+state.score;
+  hud.lives.textContent='Lives: '+state.lives;
 }
 
 function netSend(){
-  if(!state.conn||state.conn.open!==true)return;
+  if(!state.conn||!state.conn.open)return;
   const me=state.players[state.me];
   if(state.host){
-    state.conn.send({t:'state',players:state.players,bullets:state.bullets,enemies:state.enemies,score:state.score,lives:state.lives,gameOver:state.gameOver});
+    state.conn.send({t:'state',players:state.players,bullets:state.bullets,enemies:state.enemies,score:state.score,lives:state.lives,gameOver:state.gameOver,boom:state.boom});
   }else if(me){
-    state.conn.send({t:'input',x:me.x,y:me.y,dir:me.dir,shoot:(keys['j']||keys[' '])?1:0,bird:me.bird});
+    state.conn.send({t:'input',x:me.x,y:me.y,dir:me.dir,shoot:(keys['j']||keys[' ']||touch.fire)?1:0,bird:me.bird});
   }
 }
 
 function step(){
   state.tick++;
-  updateLocal();
-  if(state.host){
-    hostSim();
-    if(state.conn&&state.conn.open&&state.conn._lastInput){
-      const p=state.players['peer']; const i=state.conn._lastInput; if(p){p.x=i.x;p.y=i.y;p.dir=i.dir;p.bird=i.bird||p.bird;if(i.shoot)shoot(p);} }
-  }
-  if(state.tick%2===0)netSend();
-  draw(); requestAnimationFrame(step);
+  updateInput();
+  if(state.host) hostSim();
+  if(state.tick%2===0) netSend();
+  draw();
+  requestAnimationFrame(step);
 }
 
-function setConn(txt,ok){hud.conn.textContent=txt; hud.conn.style.borderColor=ok?'#2c8f68':'#8a2b3d';}
-
-function startHost(){
-  const bird=document.getElementById('birdSel').value; const rid=roomId(document.getElementById('room').value);
-  state.host=true; state.me='host'; state.players={'host':makePlayer('host',bird,150,H/2)}; state.score=0;state.lives=3;state.bullets=[];state.enemies=[];state.gameOver=false;
-  state.peer=new Peer(rid);
-  state.peer.on('open',()=>setConn('Hosting '+rid,true));
-  state.peer.on('connection',c=>{state.conn=c; state.players['peer']=makePlayer('peer',bird==='jay'?'cardinal':'jay',260,H/2+70); hookConn();});
-}
-function startJoin(){
-  const bird=document.getElementById('birdSel').value; const rid=roomId(document.getElementById('room').value);
-  state.host=false; state.me='peer'; state.players={'peer':makePlayer('peer',bird,260,H/2+70)}; state.score=0;state.lives=3;state.bullets=[];state.enemies=[];state.gameOver=false;
-  state.peer=new Peer();
-  state.peer.on('open',id=>{state.conn=state.peer.connect(rid,{reliable:true}); hookConn(); setConn('Joining '+rid+'…',false);});
-}
 function hookConn(){
-  if(!state.conn)return;
+  if(!state.conn) return;
   state.conn.on('open',()=>setConn(state.host?'Client connected':'Connected',true));
   state.conn.on('close',()=>setConn('Disconnected',false));
   state.conn.on('error',()=>setConn('Connection error',false));
   state.conn.on('data',d=>{
     if(d.t==='state'&&!state.host){
-      state.players=d.players||state.players; state.players[state.me]=state.players[state.me]||makePlayer(state.me,document.getElementById('birdSel').value,220,H/2);
-      state.bullets=d.bullets||[]; state.enemies=d.enemies||[]; state.score=d.score||0; state.lives=d.lives||3; state.gameOver=!!d.gameOver;
+      state.players=d.players||state.players;
+      state.players[state.me]=state.players[state.me]||mk(state.me,document.getElementById('birdSel').value,240,H/2);
+      state.bullets=d.bullets||[]; state.enemies=d.enemies||[]; state.score=d.score||0; state.lives=d.lives||3; state.gameOver=!!d.gameOver; state.boom=d.boom||[];
     }
-    if(d.t==='input'&&state.host){state.conn._lastInput=d;}
+    if(d.t==='input'&&state.host) state.conn._input=d;
   });
+}
+
+function host(){
+  const bird=document.getElementById('birdSel').value, rid=roomId(document.getElementById('room').value);
+  state.host=true; state.me='host'; state.players={host:mk('host',bird,140,H/2),peer:mk('peer',bird==='jay'?'cardinal':'jay',280,H/2+70)};
+  state.bullets=[]; state.enemies=[]; state.score=0; state.lives=3; state.gameOver=false;
+  state.peer=new Peer(rid);
+  state.peer.on('open',()=>setConn('Hosting '+rid,true));
+  state.peer.on('connection',c=>{state.conn=c; hookConn();});
+}
+
+function join(){
+  const bird=document.getElementById('birdSel').value, rid=roomId(document.getElementById('room').value);
+  state.host=false; state.me='peer'; state.players={peer:mk('peer',bird,240,H/2+70)};
+  state.bullets=[]; state.enemies=[]; state.score=0; state.lives=3; state.gameOver=false;
+  state.peer=new Peer();
+  state.peer.on('open',()=>{state.conn=state.peer.connect(rid,{reliable:true}); hookConn(); setConn('Joining '+rid+'…',false);});
 }
 
 window.addEventListener('keydown',e=>keys[e.key]=true);
 window.addEventListener('keyup',e=>keys[e.key]=false);
-document.getElementById('hostBtn').onclick=startHost;
-document.getElementById('joinBtn').onclick=startJoin;
+document.getElementById('hostBtn').onclick=host;
+document.getElementById('joinBtn').onclick=join;
+
+// Mobile joystick
+function setJoyCenter(){const r=joy.getBoundingClientRect(); joyCenter={x:r.left+r.width/2,y:r.top+r.height/2};}
+setJoyCenter(); window.addEventListener('resize',setJoyCenter);
+joy.addEventListener('touchstart',e=>{touch.active=true; handleJoy(e.touches[0]); e.preventDefault();},{passive:false});
+joy.addEventListener('touchmove',e=>{handleJoy(e.touches[0]); e.preventDefault();},{passive:false});
+joy.addEventListener('touchend',()=>{touch.active=false; touch.mx=0; touch.my=0; stick.style.left='44px'; stick.style.top='44px';},{passive:false});
+function handleJoy(t){
+  const dx=t.clientX-joyCenter.x, dy=t.clientY-joyCenter.y; const r=42;
+  const d=Math.hypot(dx,dy)||1; const nx=clamp(dx/d,-1,1), ny=clamp(dy/d,-1,1), mag=Math.min(d,r);
+  const sx=44+nx*mag, sy=44+ny*mag; stick.style.left=sx+'px'; stick.style.top=sy+'px';
+  touch.mx=nx*(mag/r); touch.my=ny*(mag/r);
+}
+fireBtn.addEventListener('touchstart',e=>{touch.fire=true;e.preventDefault();},{passive:false});
+fireBtn.addEventListener('touchend',e=>{touch.fire=false;e.preventDefault();},{passive:false});
+
 setConn('Offline',false);
 step();
 </script>
