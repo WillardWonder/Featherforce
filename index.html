@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Feather Rift Survivors</title>
+  <style>
+    :root{--bg:#070b17;--panel:#101a33;--line:#2d4684;--txt:#ecf2ff;--good:#34d399;--warn:#f59e0b}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 700px at 50% -20%,#304d86 0,#111d38 45%,#080d18 100%);color:var(--txt);font-family:Inter,system-ui}
+    #hud{position:fixed;left:10px;top:10px;z-index:30;display:flex;gap:8px;flex-wrap:wrap}
+    .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:13px}
+    #game{width:100vw;height:100vh}
+    #levelup{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;place-items:center;z-index:40}
+    .card{width:min(680px,92vw);background:#0d1730;border:1px solid #3a5aa8;border-radius:14px;padding:16px}
+    .opts{display:grid;grid-template-columns:1fr;gap:10px}
+    .opt{background:#122044;border:1px solid #4164b8;border-radius:12px;padding:12px;cursor:pointer}
+    .opt:hover{filter:brightness(1.12)}
+
+    .touch{position:fixed;inset:0;pointer-events:none;z-index:35}
+    .joy{position:absolute;left:14px;bottom:14px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);pointer-events:auto;touch-action:none}
+    .stick{position:absolute;left:45px;top:45px;width:40px;height:40px;border-radius:50%;background:rgba(73,164,255,.95)}
+    .btn{position:absolute;right:14px;bottom:20px;width:86px;height:86px;border-radius:50%;display:grid;place-items:center;font-weight:900;background:rgba(255,90,103,.9);border:1px solid rgba(255,255,255,.35);pointer-events:auto;touch-action:none}
+    @media (min-width: 1024px){ .touch{display:none} }
+  </style>
+  <!-- Open-source deps -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+</head>
+<body>
+  <div id="hud">
+    <div class="chip" id="hp">HP: 100</div>
+    <div class="chip" id="lvl">Level: 1</div>
+    <div class="chip" id="xp">XP: 0/10</div>
+    <div class="chip" id="time">Time: 0s</div>
+    <div class="chip" id="kills">Kills: 0</div>
+  </div>
+
+  <div id="levelup">
+    <div class="card">
+      <h3 style="margin:2px 0 12px">Level Up — choose one</h3>
+      <div class="opts" id="opts"></div>
+    </div>
+  </div>
+
+  <div class="touch" id="touch">
+    <div class="joy" id="joy"><div class="stick" id="stick"></div></div>
+    <div class="btn" id="dash">DASH</div>
+  </div>
+
+  <div id="game"></div>
+  <script src="game.js"></script>
+</body>
+</html>
