@@ -1,11 +1,14 @@
-# Featherforce V2
+# Featherforce // Sky Raid (Rebuild)
 
-Contra-inspired side-scrolling run-and-gun prototype with bird commandos (Bluejay + Cardinal).
+A full repo rebuild focused on one thing: **fun first**.
+
+## What changed
+- New arcade core with tighter controls and cleaner game loop
+- Contra-inspired pressure pacing (waves, projectiles, mini-boss cadence)
+- Bird commandos (Bluejay/Cardinal visuals)
+- Mobile-first controls (left/right/boost/fire)
+- Zero backend dependencies
 
 ## Controls
-- Keyboard: A/D move, W jump, J or Space fire
-- Mobile: on-screen Left/Right/Jump/Fire
-
-## Notes
-- This is the rebuilt gameplay baseline using Phaser 3.
-- Multiplayer will be added after single-player feel is tuned.
+- Keyboard: A/D move, W boost, J/Space fire
+- Mobile: on-screen controls
