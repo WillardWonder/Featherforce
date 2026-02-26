@@ -31,7 +31,8 @@
     <div class="controls">
       <select id="birdSel"><option value="jay">Bluejay</option><option value="cardinal">Cardinal</option></select>
       <input id="room" placeholder="room code" />
-      <button id="hostBtn">Host</button><button id="joinBtn">Join</button>
+      <button id="soloBtn" onclick="playSolo()">Play Solo</button>
+      <button id="hostBtn" onclick="host()">Host</button><button id="joinBtn" onclick="join()">Join</button>
     </div>
   </div>
   <div class="hud">
@@ -183,19 +184,29 @@ function hook(){
 }
 
 function resetCommon(){S.score=0;S.lives=3;S.gameOver=false;S.cam=0;S.bullets=[];S.enemies=[];S.fx=[]}
+function playSolo(){
+  const bird=document.getElementById('birdSel').value;
+  S.host=true; S.me='host'; resetCommon();
+  S.players={host:mk('host',bird),peer:mk('peer',bird==='jay'?'cardinal':'jay')};
+  S.players.peer.x=300;
+  setConn('Solo mode',true);
+}
+
 function host(){
   const bird=document.getElementById('birdSel').value,r=room(document.getElementById('room').value);
   S.host=true; S.me='host'; resetCommon(); S.players={host:mk('host',bird),peer:mk('peer',bird==='jay'?'cardinal':'jay')}; S.players.peer.x=300;
+  if(typeof Peer==='undefined'){ setConn('Peer service unavailable, running Solo',true); return; }
   S.peer=new Peer(r); S.peer.on('open',()=>setConn('Hosting '+r,true)); S.peer.on('connection',c=>{S.conn=c; hook();});
 }
 function join(){
   const bird=document.getElementById('birdSel').value,r=room(document.getElementById('room').value);
   S.host=false; S.me='peer'; resetCommon(); S.players={peer:mk('peer',bird)};
+  if(typeof Peer==='undefined'){ setConn('Peer service unavailable',false); return; }
   S.peer=new Peer(); S.peer.on('open',()=>{S.conn=S.peer.connect(r,{reliable:true}); hook(); setConn('Joining '+r+'…',false)});
 }
 
+window.playSolo=playSolo; window.host=host; window.join=join;
 window.addEventListener('keydown',e=>K[e.key]=true); window.addEventListener('keyup',e=>K[e.key]=false);
-document.getElementById('hostBtn').onclick=host; document.getElementById('joinBtn').onclick=join;
 function bindBtn(id,key){const el=document.getElementById(id); el.addEventListener('touchstart',e=>{T[key]=true;e.preventDefault()},{passive:false}); el.addEventListener('touchend',e=>{T[key]=false;e.preventDefault()},{passive:false});}
 bindBtn('left','left'); bindBtn('right','right'); bindBtn('jump','jump'); bindBtn('fire','fire');
 setConn('Offline',false); S.players={host:mk('host','jay'),peer:mk('peer','cardinal')}; loop();
