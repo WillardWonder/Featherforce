@@ -1,14 +1,17 @@
-# Featherforce // Sky Raid (Rebuild)
+# Featherforce // VOID KITCHEN PROTOCOL
 
-A full repo rebuild focused on one thing: **fun first**.
+A full genre pivot: absurd arcade lane-runner with tactical serving mechanics.
 
-## What changed
-- New arcade core with tighter controls and cleaner game loop
-- Contra-inspired pressure pacing (waves, projectiles, mini-boss cadence)
-- Bird commandos (Bluejay/Cardinal visuals)
-- Mobile-first controls (left/right/boost/fire)
-- Zero backend dependencies
+## Genre mashup
+- Endless lane action
+- Resource/cargo management
+- Heat system (risk)
+- Timing actions (Serve/Jam)
+- Mini-boss event pacing
 
 ## Controls
-- Keyboard: A/D move, W boost, J/Space fire
-- Mobile: on-screen controls
+- Desktop: A/D or arrows to switch lanes, J/Space serve, K/W jam
+- Mobile: Left/Right + SERVE/JAM touch buttons
+
+## Win condition
+There is no finish line. Build Rep without hitting 100% Heat.
