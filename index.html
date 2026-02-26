@@ -51,9 +51,9 @@
   </div>
 </div>
 <script>
-const c=document.getElementById('game'),x=c.getContext('2d'),W=c.width,H=c.height,GROUND=500;
+const c=document.getElementById('game'),x=c.getContext('2d'),W=c.width,H=c.height,GROUND=450;
 const K={},T={left:false,right:false,jump:false,fire:false};
-const S={host:false,me:'host',peer:null,conn:null,tick:0,score:0,lives:3,gameOver:false,cam:0,players:{},bullets:[],enemies:[],fx:[],stars:[]};
+const S={host:true,me:'host',peer:null,conn:null,tick:0,score:0,lives:3,gameOver:false,cam:0,players:{},bullets:[],enemies:[],fx:[],stars:[]};
 for(let i=0;i<180;i++)S.stars.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()*2+1,v:.2+Math.random()*.9});
 const hud={
   conn:document.getElementById('conn'),
