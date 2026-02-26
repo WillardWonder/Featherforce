@@ -3,26 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Feather Force // Contra Mode</title>
+  <title>Feather Force // Mobile Offline</title>
   <style>
-    :root{--bg:#0a1020;--text:#eaf1ff;--line:#2f4682;--panel:#0f1730;--blue:#49a4ff;--red:#ff5a67;--gold:#ffd166}
+    :root{--bg:#081123;--panel:#0f1730;--line:#2f4682;--text:#eaf1ff;--blue:#49a4ff;--red:#ff5a67;--gold:#ffd166}
     *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui;background:radial-gradient(1200px 700px at 50% -20%,#273f75 0,#0d1730 45%,#060912 100%);color:var(--text)}
     .wrap{max-width:1100px;margin:10px auto;padding:10px}
     .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
     .brand{font-weight:900}.brand b:first-child{color:var(--blue)} .brand b:last-child{color:var(--red)}
     .controls{display:flex;gap:8px;flex-wrap:wrap}
-    .controls input,.controls button,.controls select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:9px 10px;border-radius:10px}
+    .controls button,.controls select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:9px 10px;border-radius:10px}
     .hud{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
     .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:13px}
     .frame{position:relative}
     canvas{width:100%;height:auto;border:1px solid var(--line);border-radius:12px;background:#050a14;box-shadow:0 16px 44px rgba(0,0,0,.45)}
-    .touch{display:none;position:absolute;inset:0;pointer-events:none}
-    .btn{position:absolute;bottom:16px;width:70px;height:70px;border-radius:50%;display:grid;place-items:center;font-weight:900;pointer-events:auto;touch-action:none;border:1px solid rgba(255,255,255,.35)}
-    .l{left:14px;background:rgba(73,164,255,.85)} .r{left:92px;background:rgba(73,164,255,.85)}
-    .j{right:92px;background:rgba(255,209,102,.88)} .f{right:14px;background:rgba(255,90,103,.88)}
-    @media (max-width:900px){.touch{display:block}}
+    .touch{position:absolute;inset:0;pointer-events:none}
+    .btn{position:absolute;bottom:16px;width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font-weight:900;pointer-events:auto;touch-action:none;border:1px solid rgba(255,255,255,.35)}
+    .l{left:14px;background:rgba(73,164,255,.85)} .r{left:94px;background:rgba(73,164,255,.85)}
+    .j{right:94px;background:rgba(255,209,102,.88)} .f{right:14px;background:rgba(255,90,103,.88)}
   </style>
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -30,16 +28,14 @@
     <div class="brand">FEATHER FORCE // <b>BLUEJAY</b> + <b>CARDINAL</b> // CONTRA MODE</div>
     <div class="controls">
       <select id="birdSel"><option value="jay">Bluejay</option><option value="cardinal">Cardinal</option></select>
-      <input id="room" placeholder="room code" />
-      <button id="soloBtn" onclick="playSolo()">Play Solo</button>
-      <button id="hostBtn" onclick="host()">Host</button><button id="joinBtn" onclick="join()">Join</button>
+      <button id="playBtn">Play Solo</button>
     </div>
   </div>
   <div class="hud">
-    <div class="chip" id="conn">Offline</div>
+    <div class="chip" id="status">Ready</div>
     <div class="chip" id="score">Score: 0</div>
     <div class="chip" id="lives">Lives: 3</div>
-    <div class="chip">Keyboard: A/D move · W jump · J fire</div>
+    <div class="chip">A/D move · W jump · J fire · mobile buttons supported</div>
   </div>
   <div class="frame">
     <canvas id="game" width="1060" height="600"></canvas>
@@ -52,164 +48,100 @@
   </div>
 </div>
 <script>
-const c=document.getElementById('game'),x=c.getContext('2d'),W=c.width,H=c.height,GROUND=450;
-const K={},T={left:false,right:false,jump:false,fire:false};
-const S={host:true,me:'host',peer:null,conn:null,tick:0,score:0,lives:3,gameOver:false,cam:0,players:{},bullets:[],enemies:[],fx:[],stars:[]};
-for(let i=0;i<180;i++)S.stars.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()*2+1,v:.2+Math.random()*.9});
-const hud={
-  conn:document.getElementById('conn'),
-  lives:document.getElementById('lives'),
-  score:document.getElementById('score')
-};
+(() => {
+  const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height,G=470;
+  const ui={status:document.getElementById('status'),score:document.getElementById('score'),lives:document.getElementById('lives')};
+  const keys={},touch={left:false,right:false,jump:false,fire:false};
+  const S={running:false,t:0,score:0,lives:3,cam:0,stars:[],bullets:[],enemies:[],fx:[],p:null,gameOver:false};
 
-function mkP(id,bird){return{id,bird,x:220+(id==='peer'?70:0),y:GROUND,vx:0,vy:0,w:44,h:36,dir:1,cool:0,onG:true}};
-function birdCol(b){return b==='jay'?'#49a4ff':'#ff5a67'}
-function room(v){return 'ff-'+(v||'nest').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,24)}
-function setConn(t,ok){hud.conn.textContent=t;hud.conn.style.borderColor=ok?'#2f9f73':'#8f2a4d'}
-function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+  for(let i=0;i<180;i++)S.stars.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()*2+1,v:.2+Math.random()*.8});
 
-function drawBird(p){
-  x.save(); x.translate(p.x-S.cam,p.y);
-  x.scale(p.dir,1);
-  const c=birdCol(p.bird);
-  x.fillStyle=p.bird==='jay'?'#2f6fc0':'#b93d47'; x.beginPath(); x.moveTo(-22,-5); x.lineTo(-38,-14); x.lineTo(-34,-2); x.lineTo(-38,8); x.closePath(); x.fill();
-  x.fillStyle=c; x.beginPath(); x.ellipse(-1,-2,23,14,0,0,Math.PI*2); x.fill();
-  x.fillStyle='rgba(255,255,255,.92)'; x.beginPath(); x.ellipse(3,3,10,7,0,0,Math.PI*2); x.fill();
-  x.fillStyle=p.bird==='jay'?'#1f4f8d':'#8e2a33'; x.beginPath(); x.ellipse(-7,1,12,7,-.35,0,Math.PI*2); x.fill();
-  x.fillStyle=c; x.beginPath(); if(p.bird==='jay'){x.moveTo(0,-16);x.lineTo(6,-26);x.lineTo(11,-14);} else {x.moveTo(2,-14);x.lineTo(8,-21);x.lineTo(12,-12);} x.closePath(); x.fill();
-  x.fillStyle=c; x.beginPath(); x.ellipse(12,-7,10,9,0,0,Math.PI*2); x.fill();
-  x.fillStyle='#fff'; x.beginPath(); x.arc(14,-9,3.5,0,Math.PI*2); x.fill(); x.fillStyle='#111'; x.beginPath(); x.arc(14.8,-9,1.2,0,Math.PI*2); x.fill();
-  x.fillStyle='#ffd166'; x.beginPath(); x.moveTo(20,-8); x.lineTo(34,-5); x.lineTo(20,-1); x.closePath(); x.fill();
-  x.restore();
-}
+  function mkPlayer(bird){return{bird,x:180,y:G,vx:0,vy:0,dir:1,onG:true,cool:0};}
+  function birdColor(b){return b==='jay'?'#49a4ff':'#ff5a67'}
 
-function spawnEnemy(){const wx=S.cam+W+40, y=GROUND; S.enemies.push({x:wx,y,vx:-2.2-Math.random()*1.6,hp:2,r:18});}
-function shoot(p){if(p.cool>0||S.gameOver)return; p.cool=9; S.bullets.push({x:p.x+p.dir*30,y:p.y-8,vx:p.dir*10});}
-
-function controlsForMe(){
-  const L=K['a']||K['ArrowLeft']||T.left,R=K['d']||K['ArrowRight']||T.right,J=K['w']||K['ArrowUp']||T.jump,F=K['j']||K[' ']||T.fire;
-  return {L,R,J,F};
-}
-
-function updatePlayer(p,input){
-  const speed=3.5,grav=.55,jumpV=-10.5;
-  p.vx=(input.R?1:0)-(input.L?1:0);
-  if(p.vx!==0)p.dir=p.vx>0?1:-1;
-  p.x+=p.vx*speed;
-  if(input.J&&p.onG){p.vy=jumpV;p.onG=false}
-  p.vy+=grav; p.y+=p.vy;
-  if(p.y>=GROUND){p.y=GROUND;p.vy=0;p.onG=true}
-  p.x=clamp(p.x,60,S.cam+W-120);
-  if(input.F)shoot(p);
-  if(p.cool>0)p.cool--;
-}
-
-function hostSim(){
-  const me=S.players.host;
-  updatePlayer(me,controlsForMe());
-  if(S.conn&&S.conn._in){updatePlayer(S.players.peer,S.conn._in)}
-
-  if(me.x-S.cam>340) S.cam=me.x-340;
-  if(S.tick%42===0)spawnEnemy();
-
-  for(const b of S.bullets)b.x+=b.vx;
-  S.bullets=S.bullets.filter(b=>b.x>S.cam-80&&b.x<S.cam+W+80);
-  for(const e of S.enemies)e.x+=e.vx;
-
-  for(const e of S.enemies){
-    for(const b of S.bullets){const dx=e.x-b.x,dy=(e.y-8)-b.y;if(dx*dx+dy*dy<520){e.hp--;b.x=1e9;if(e.hp<=0){e.dead=true;S.score+=120;S.fx.push({x:e.x,y:e.y,t:14});}}}
-    for(const id of ['host','peer']){const p=S.players[id];const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy<1200){e.dead=true;S.lives--;S.fx.push({x:p.x,y:p.y,t:12});if(S.lives<=0)S.gameOver=true;}}
+  function drawBird(p){
+    ctx.save(); ctx.translate(p.x-S.cam,p.y); ctx.scale(p.dir,1);
+    const c=birdColor(p.bird);
+    ctx.fillStyle=p.bird==='jay'?'#2f6fc0':'#b93d47'; ctx.beginPath(); ctx.moveTo(-22,-5); ctx.lineTo(-38,-14); ctx.lineTo(-34,-2); ctx.lineTo(-38,8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=c; ctx.beginPath(); ctx.ellipse(-1,-2,23,14,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.92)'; ctx.beginPath(); ctx.ellipse(3,3,10,7,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=p.bird==='jay'?'#1f4f8d':'#8e2a33'; ctx.beginPath(); ctx.ellipse(-7,1,12,7,-.35,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=c; ctx.beginPath(); if(p.bird==='jay'){ctx.moveTo(0,-16);ctx.lineTo(6,-26);ctx.lineTo(11,-14);} else {ctx.moveTo(2,-14);ctx.lineTo(8,-21);ctx.lineTo(12,-12);} ctx.closePath(); ctx.fill();
+    ctx.fillStyle=c; ctx.beginPath(); ctx.ellipse(12,-7,10,9,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(14,-9,3.5,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(14.8,-9,1.2,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.moveTo(20,-8); ctx.lineTo(34,-5); ctx.lineTo(20,-1); ctx.closePath(); ctx.fill();
+    ctx.restore();
   }
-  S.enemies=S.enemies.filter(e=>!e.dead&&e.x>S.cam-120);
-  S.fx=S.fx.filter(f=>--f.t>0);
-}
 
-function draw(){
-  // sky
-  const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#152a52'); g.addColorStop(.58,'#0b1730'); g.addColorStop(1,'#07101f'); x.fillStyle=g; x.fillRect(0,0,W,H);
-  x.fillStyle='rgba(255,255,255,.2)'; x.font='600 16px system-ui'; x.fillText('Feather Force active',18,28);
-  // stars
-  for(const s of S.stars){s.x-=s.v; if(s.x<0)s.x=W; x.fillStyle='rgba(255,255,255,.7)'; x.fillRect(s.x,s.y,s.s,s.s)}
-  // parallax hills
-  for(let l=0;l<3;l++){
-    x.fillStyle=['#12233f','#10203a','#0d1a31'][l]; x.beginPath(); x.moveTo(0,H);
-    for(let i=0;i<=W;i+=80){const y=420+l*35+Math.sin((i+S.cam*(.15+l*.12))/120)*16; x.lineTo(i,y)}
-    x.lineTo(W,H); x.closePath(); x.fill();
+  function spawnEnemy(){S.enemies.push({x:S.cam+W+40,y:G,vx:-2.1-Math.random()*1.6,hp:2,r:18});}
+  function shoot(){if(S.p.cool>0||S.gameOver)return; S.p.cool=9; S.bullets.push({x:S.p.x+S.p.dir*30,y:S.p.y-8,vx:S.p.dir*10});}
+
+  function update(){
+    if(!S.running||S.gameOver)return;
+    const L=keys['a']||keys['ArrowLeft']||touch.left;
+    const R=keys['d']||keys['ArrowRight']||touch.right;
+    const J=keys['w']||keys['ArrowUp']||touch.jump;
+    const F=keys['j']||keys[' ']||touch.fire;
+    S.p.vx=(R?1:0)-(L?1:0);
+    if(S.p.vx!==0)S.p.dir=S.p.vx>0?1:-1;
+    S.p.x+=S.p.vx*3.6;
+    if(J&&S.p.onG){S.p.vy=-10.8;S.p.onG=false}
+    S.p.vy+=0.55; S.p.y+=S.p.vy;
+    if(S.p.y>=G){S.p.y=G;S.p.vy=0;S.p.onG=true}
+    if(F)shoot();
+    if(S.p.cool>0)S.p.cool--;
+
+    if(S.p.x-S.cam>340)S.cam=S.p.x-340;
+    if(S.t%44===0)spawnEnemy();
+
+    for(const b of S.bullets)b.x+=b.vx;
+    S.bullets=S.bullets.filter(b=>b.x>S.cam-80&&b.x<S.cam+W+80);
+    for(const e of S.enemies)e.x+=e.vx;
+
+    for(const e of S.enemies){
+      for(const b of S.bullets){const dx=e.x-b.x,dy=(e.y-8)-b.y;if(dx*dx+dy*dy<520){e.hp--;b.x=1e9;if(e.hp<=0){e.dead=true;S.score+=120;S.fx.push({x:e.x,y:e.y,t:14});}}}
+      const dx=e.x-S.p.x,dy=e.y-S.p.y; if(dx*dx+dy*dy<1200){e.dead=true;S.lives--;S.fx.push({x:S.p.x,y:S.p.y,t:12}); if(S.lives<=0)S.gameOver=true;}
+    }
+    S.enemies=S.enemies.filter(e=>!e.dead&&e.x>S.cam-120);
+    S.fx=S.fx.filter(f=>--f.t>0);
   }
-  // ground
-  x.fillStyle='#1b2f58'; x.fillRect(0,GROUND+18,W,H-(GROUND+18));
-  x.fillStyle='#29497f'; x.fillRect(0,GROUND+14,W,8);
 
-  for(const b of S.bullets){x.fillStyle=varColor('--gold'); x.shadowColor='#ffd166'; x.shadowBlur=10; x.fillRect(b.x-S.cam-5,b.y-2,10,4); x.shadowBlur=0;}
-  for(const e of S.enemies){x.fillStyle='#8b5cf6'; x.beginPath(); x.arc(e.x-S.cam,e.y-8,e.r,0,Math.PI*2); x.fill();}
-  drawBird(S.players.host); if(S.players.peer) drawBird(S.players.peer);
-  for(const f of S.fx){x.strokeStyle=`rgba(255,209,102,${f.t/14})`; x.lineWidth=2; x.beginPath(); x.arc(f.x-S.cam,f.y-8,20-f.t*.7,0,Math.PI*2); x.stroke();}
+  function draw(){
+    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#152a52'); g.addColorStop(.58,'#0b1730'); g.addColorStop(1,'#07101f'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(255,255,255,.25)'; ctx.font='600 16px system-ui'; ctx.fillText('Feather Force active',16,26);
+    for(const s of S.stars){s.x-=s.v; if(s.x<0)s.x=W; ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(s.x,s.y,s.s,s.s)}
+    for(let l=0;l<3;l++){
+      ctx.fillStyle=['#12233f','#10203a','#0d1a31'][l]; ctx.beginPath(); ctx.moveTo(0,H);
+      for(let i=0;i<=W;i+=80){const y=420+l*35+Math.sin((i+S.cam*(.15+l*.12))/120)*16; ctx.lineTo(i,y)}
+      ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle='#1b2f58'; ctx.fillRect(0,G+18,W,H-(G+18)); ctx.fillStyle='#29497f'; ctx.fillRect(0,G+14,W,8);
 
-  hud.score.textContent='Score: '+S.score; hud.lives.textContent='Lives: '+S.lives;
-  if(S.gameOver){x.fillStyle='rgba(0,0,0,.6)'; x.fillRect(0,0,W,H); x.fillStyle='#fff'; x.font='700 56px system-ui'; x.fillText('GAME OVER',W/2-170,H/2)}
-}
-function varColor(v){return getComputedStyle(document.documentElement).getPropertyValue(v)}
+    for(const b of S.bullets){ctx.fillStyle='#ffd166'; ctx.shadowColor='#ffd166'; ctx.shadowBlur=10; ctx.fillRect(b.x-S.cam-5,b.y-2,10,4); ctx.shadowBlur=0;}
+    for(const e of S.enemies){ctx.fillStyle='#8b5cf6'; ctx.beginPath(); ctx.arc(e.x-S.cam,e.y-8,e.r,0,Math.PI*2); ctx.fill();}
+    if(S.p)drawBird(S.p);
+    for(const f of S.fx){ctx.strokeStyle=`rgba(255,209,102,${f.t/14})`; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(f.x-S.cam,f.y-8,20-f.t*.7,0,Math.PI*2); ctx.stroke();}
 
-function net(){
-  if(!S.conn||!S.conn.open)return;
-  if(S.host){S.conn.send({t:'state',players:S.players,bullets:S.bullets,enemies:S.enemies,score:S.score,lives:S.lives,gameOver:S.gameOver,cam:S.cam,fx:S.fx});}
-  else {const p=S.players.peer; const i=controlsForMe(); S.conn.send({t:'in',L:i.L,R:i.R,J:i.J,F:i.F,x:p.x,y:p.y,dir:p.dir,bird:p.bird});}
-}
+    ui.score.textContent='Score: '+S.score; ui.lives.textContent='Lives: '+S.lives;
+    if(S.gameOver){ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font='700 56px system-ui'; ctx.fillText('GAME OVER',W/2-170,H/2)}
+  }
 
-function ensureActors(){
-  if(!S.players.host) S.players.host=mk('host','jay');
-  if(!S.players.peer) { S.players.peer=mk('peer','cardinal'); S.players.peer.x=300; }
-}
+  function loop(){S.t++; update(); draw(); requestAnimationFrame(loop);} loop();
 
-function loop(){
-  S.tick++;
-  ensureActors();
-  if(S.host) hostSim();
-  else {updatePlayer(S.players.peer,controlsForMe());}
-  if(S.tick%2===0) net();
-  draw();
-  // visual heartbeat so user always sees motion
-  if(S.tick%120===0 && S.enemies.length===0 && S.host && !S.gameOver) spawnEnemy();
-  requestAnimationFrame(loop);
-}
+  function start(){
+    S.running=true; S.t=0; S.score=0; S.lives=3; S.cam=0; S.bullets=[]; S.enemies=[]; S.fx=[]; S.gameOver=false;
+    S.p=mkPlayer(document.getElementById('birdSel').value); ui.status.textContent='Solo mode';
+  }
 
-function hook(){
-  S.conn.on('open',()=>setConn(S.host?'Client connected':'Connected',true));
-  S.conn.on('close',()=>setConn('Disconnected',false));
-  S.conn.on('error',()=>setConn('Connection error',false));
-  S.conn.on('data',d=>{
-    if(d.t==='state'&&!S.host){S.players=d.players; S.players.peer=S.players.peer||mk('peer',document.getElementById('birdSel').value); S.bullets=d.bullets; S.enemies=d.enemies; S.score=d.score; S.lives=d.lives; S.gameOver=d.gameOver; S.cam=d.cam||0; S.fx=d.fx||[];}
-    if(d.t==='in'&&S.host){S.conn._in=d;}
-  });
-}
+  window.addEventListener('keydown',e=>keys[e.key]=true); window.addEventListener('keyup',e=>keys[e.key]=false);
+  document.getElementById('playBtn').addEventListener('click',start);
 
-function resetCommon(){S.score=0;S.lives=3;S.gameOver=false;S.cam=0;S.bullets=[];S.enemies=[];S.fx=[]}
-function playSolo(){
-  const bird=document.getElementById('birdSel').value;
-  S.host=true; S.me='host'; resetCommon();
-  S.players={host:mk('host',bird),peer:mk('peer',bird==='jay'?'cardinal':'jay')};
-  S.players.peer.x=300;
-  setConn('Solo mode',true);
-}
+  function bind(id,key){const el=document.getElementById(id); el.addEventListener('touchstart',e=>{touch[key]=true;e.preventDefault()},{passive:false}); el.addEventListener('touchend',e=>{touch[key]=false;e.preventDefault()},{passive:false});}
+  bind('left','left'); bind('right','right'); bind('jump','jump'); bind('fire','fire');
 
-function host(){
-  const bird=document.getElementById('birdSel').value,r=room(document.getElementById('room').value);
-  S.host=true; S.me='host'; resetCommon(); S.players={host:mk('host',bird),peer:mk('peer',bird==='jay'?'cardinal':'jay')}; S.players.peer.x=300;
-  if(typeof Peer==='undefined'){ setConn('Peer service unavailable, running Solo',true); return; }
-  S.peer=new Peer(r); S.peer.on('open',()=>setConn('Hosting '+r,true)); S.peer.on('connection',c=>{S.conn=c; hook();});
-}
-function join(){
-  const bird=document.getElementById('birdSel').value,r=room(document.getElementById('room').value);
-  S.host=false; S.me='peer'; resetCommon(); S.players={peer:mk('peer',bird)};
-  if(typeof Peer==='undefined'){ setConn('Peer service unavailable',false); return; }
-  S.peer=new Peer(); S.peer.on('open',()=>{S.conn=S.peer.connect(r,{reliable:true}); hook(); setConn('Joining '+r+'…',false)});
-}
-
-window.playSolo=playSolo; window.host=host; window.join=join;
-window.addEventListener('keydown',e=>K[e.key]=true); window.addEventListener('keyup',e=>K[e.key]=false);
-function bindBtn(id,key){const el=document.getElementById(id); el.addEventListener('touchstart',e=>{T[key]=true;e.preventDefault()},{passive:false}); el.addEventListener('touchend',e=>{T[key]=false;e.preventDefault()},{passive:false});}
-bindBtn('left','left'); bindBtn('right','right'); bindBtn('jump','jump'); bindBtn('fire','fire');
-setConn('Offline',false); S.players={host:mk('host','jay'),peer:mk('peer','cardinal')}; loop();
+  start();
+})();
 </script>
 </body>
 </html>
