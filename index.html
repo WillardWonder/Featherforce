@@ -126,6 +126,7 @@ function hostSim(){
 function draw(){
   // sky
   const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#152a52'); g.addColorStop(.58,'#0b1730'); g.addColorStop(1,'#07101f'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.fillStyle='rgba(255,255,255,.2)'; x.font='600 16px system-ui'; x.fillText('Feather Force active',18,28);
   // stars
   for(const s of S.stars){s.x-=s.v; if(s.x<0)s.x=W; x.fillStyle='rgba(255,255,255,.7)'; x.fillRect(s.x,s.y,s.s,s.s)}
   // parallax hills
@@ -154,12 +155,21 @@ function net(){
   else {const p=S.players.peer; const i=controlsForMe(); S.conn.send({t:'in',L:i.L,R:i.R,J:i.J,F:i.F,x:p.x,y:p.y,dir:p.dir,bird:p.bird});}
 }
 
+function ensureActors(){
+  if(!S.players.host) S.players.host=mk('host','jay');
+  if(!S.players.peer) { S.players.peer=mk('peer','cardinal'); S.players.peer.x=300; }
+}
+
 function loop(){
   S.tick++;
+  ensureActors();
   if(S.host) hostSim();
   else {updatePlayer(S.players.peer,controlsForMe());}
   if(S.tick%2===0) net();
-  draw(); requestAnimationFrame(loop);
+  draw();
+  // visual heartbeat so user always sees motion
+  if(S.tick%120===0 && S.enemies.length===0 && S.host && !S.gameOver) spawnEnemy();
+  requestAnimationFrame(loop);
 }
 
 function hook(){
