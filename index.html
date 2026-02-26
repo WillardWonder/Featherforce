@@ -94,19 +94,83 @@ function drawBackground(){
 }
 
 function birdSprite(p){
-  ctx.save(); ctx.translate(p.x,p.y); ctx.scale(p.dir,1);
+  ctx.save();
+  ctx.translate(p.x,p.y);
+  ctx.scale(p.dir,1);
   const c=colorBird(p.bird);
+
+  // tail feathers (actual bird silhouette)
+  ctx.fillStyle=p.bird==='jay'?'#2c6fc0':'#b83a45';
+  ctx.beginPath();
+  ctx.moveTo(-24,-2); ctx.lineTo(-40,-10); ctx.lineTo(-34,1); ctx.lineTo(-40,12); ctx.closePath();
+  ctx.fill();
+
   // body
-  ctx.fillStyle=c; ctx.beginPath(); ctx.ellipse(0,0,24,15,0,0,Math.PI*2); ctx.fill();
-  // wing
-  ctx.fillStyle='rgba(255,255,255,.22)'; ctx.beginPath(); ctx.ellipse(-3,4,12,6,0,0,Math.PI*2); ctx.fill();
-  // eye
-  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-7,-4,4,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#101'; ctx.beginPath(); ctx.arc(-8,-4,1.3,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=c;
+  ctx.beginPath();
+  ctx.ellipse(-2,0,24,15,0,0,Math.PI*2);
+  ctx.fill();
+
+  // chest / belly
+  ctx.fillStyle='rgba(240,246,255,.9)';
+  ctx.beginPath();
+  ctx.ellipse(2,4,11,8,0,0,Math.PI*2);
+  ctx.fill();
+
+  // wing (layered feather look)
+  ctx.fillStyle=p.bird==='jay'?'#1f4f8b':'#8f2631';
+  ctx.beginPath();
+  ctx.ellipse(-6,2,13,8,-0.35,0,Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.25)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(-14,-2); ctx.lineTo(-2,5); ctx.stroke();
+
+  // crest (jay has bigger crest)
+  ctx.fillStyle=c;
+  ctx.beginPath();
+  if(p.bird==='jay'){
+    ctx.moveTo(0,-14); ctx.lineTo(6,-25); ctx.lineTo(11,-13);
+  }else{
+    ctx.moveTo(2,-12); ctx.lineTo(8,-20); ctx.lineTo(12,-11);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // head
+  ctx.fillStyle=c;
+  ctx.beginPath();
+  ctx.ellipse(12,-4,11,10,0,0,Math.PI*2);
+  ctx.fill();
+
+  // eye + pupil
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(14,-7,3.6,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#0d1426';
+  ctx.beginPath(); ctx.arc(14.6,-7,1.3,0,Math.PI*2); ctx.fill();
+
   // beak
-  ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.moveTo(16,-2); ctx.lineTo(31,1); ctx.lineTo(16,4); ctx.closePath(); ctx.fill();
-  // outline glow
-  ctx.strokeStyle='rgba(255,255,255,.2)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='#ffd166';
+  ctx.beginPath();
+  ctx.moveTo(20,-6); ctx.lineTo(35,-2); ctx.lineTo(20,2); ctx.closePath();
+  ctx.fill();
+
+  // legs hint
+  ctx.strokeStyle='rgba(255,209,102,.9)';
+  ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(0,12); ctx.lineTo(-2,17);
+  ctx.moveTo(6,12); ctx.lineTo(4,17);
+  ctx.stroke();
+
+  // subtle outline
+  ctx.strokeStyle='rgba(255,255,255,.16)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.ellipse(-2,0,24,15,0,0,Math.PI*2);
+  ctx.stroke();
+
   ctx.restore();
 }
 
