@@ -1,23 +1,11 @@
-# Feather Force (Bluejay & Cardinal)
+# Featherforce V2
 
-A polished retro-style co-op shooter inspired by Contra energy, with two bird heroes:
-- **Bluejay**
-- **Cardinal**
+Contra-inspired side-scrolling run-and-gun prototype with bird commandos (Bluejay + Cardinal).
 
-## Features
-- Retro side-shooter feel (canvas)
-- 2-player online co-op (host/join room)
-- Host-authoritative enemy simulation
-- Synced player movement/shooting over WebRTC (PeerJS)
-- GitHub Pages friendly (static)
-
-## Play
-- Open site
-- Pick character
-- Host enters room code and clicks **Host**
-- Friend enters same code and clicks **Join**
-- Controls: `WASD` or arrows to move, `J` or space to fire
+## Controls
+- Keyboard: A/D move, W jump, J or Space fire
+- Mobile: on-screen Left/Right/Jump/Fire
 
 ## Notes
-- Multiplayer uses PeerJS cloud signaling for initial connection.
-- Host drives enemy simulation and score.
+- This is the rebuilt gameplay baseline using Phaser 3.
+- Multiplayer will be added after single-player feel is tuned.
