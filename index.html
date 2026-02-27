@@ -3,53 +3,76 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Featherforce Arena (Brotato-style)</title>
+  <title>Bot Arena League</title>
   <style>
-    :root{--bg:#0a0f1d;--panel:#121b34;--line:#36539a;--txt:#eaf2ff}
-    *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 700px at 50% -20%,#34548f 0,#111d37 45%,#080d19 100%);color:var(--txt);font-family:Inter,system-ui}
-    .wrap{max-width:1020px;margin:12px auto;padding:0 12px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+    :root{--bg:#0a1020;--panel:#121b34;--line:#3a57a1;--txt:#ebf2ff;--ok:#34d399;--bad:#fb7185;--warn:#fbbf24}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 700px at 50% -20%,#37569a 0,#111d37 45%,#080d18 100%);color:var(--txt);font-family:Inter,system-ui}
+    .wrap{max-width:1100px;margin:14px auto;padding:0 12px}
+    .top{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
     .brand{font-weight:900;letter-spacing:.3px}
-    .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:13px}
     .row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-    canvas{width:100%;height:auto;border:1px solid var(--line);border-radius:14px;background:#050916;box-shadow:0 18px 48px rgba(0,0,0,.45)}
-    button{background:#1a2f63;border:1px solid #658de3;color:#fff;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer}
-    #up{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;place-items:center;z-index:30}
-    #up .card{width:min(680px,92vw);background:#0f1831;border:1px solid #4468be;border-radius:14px;padding:14px}
-    .opts{display:grid;gap:8px}
-    .opt{padding:10px;border:1px solid #4366b9;background:#132248;border-radius:10px;cursor:pointer}
-
-    .touch{position:fixed;inset:0;pointer-events:none;z-index:20}
-    .joy{position:absolute;left:14px;bottom:14px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);pointer-events:auto;touch-action:none}
-    .stick{position:absolute;left:45px;top:45px;width:40px;height:40px;border-radius:50%;background:rgba(73,164,255,.95)}
-    .btn{position:absolute;right:14px;bottom:20px;width:86px;height:86px;border-radius:50%;display:grid;place-items:center;font-weight:900;background:rgba(255,90,103,.9);border:1px solid rgba(255,255,255,.35);pointer-events:auto;touch-action:none}
-    @media (min-width:1000px){.touch{display:none}}
+    .chip{background:var(--panel);border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-size:13px}
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:12px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{background:#0f1730;border:1px solid #3a5aa2;border-radius:14px;padding:12px}
+    h3{margin:0 0 10px}
+    label{font-size:13px;opacity:.9;display:block;margin:8px 0 5px}
+    input,textarea,select{width:100%;background:#101a35;border:1px solid #3a5ca8;color:#fff;border-radius:10px;padding:9px}
+    textarea{min-height:90px;resize:vertical}
+    button{background:#1a2f63;border:1px solid #648de5;color:#fff;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer}
+    button:hover{filter:brightness(1.1)}
+    .btns{display:flex;gap:8px;flex-wrap:wrap}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border-bottom:1px solid #2a3f7a;padding:7px 6px;text-align:left}
+    .good{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+    .feed{max-height:280px;overflow:auto;border:1px solid #2e4788;border-radius:10px;padding:8px;background:#0c1530}
+    .item{border-bottom:1px solid #22376d;padding:6px 0}.item:last-child{border-bottom:none}
   </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <div class="brand">FEATHERFORCE ARENA // BROTATO MODE</div>
-    <button id="restart">New Run</button>
+    <div class="brand">BOT ARENA LEAGUE // community challenge engine</div>
+    <div class="btns"><button id="newRound">New Round</button><button id="resetAll">Reset League</button></div>
   </div>
+
   <div class="row">
-    <div class="chip" id="wave">Wave: 1</div>
-    <div class="chip" id="time">Time: 0s</div>
-    <div class="chip" id="hp">HP: 100</div>
-    <div class="chip" id="lvl">Lvl: 1</div>
-    <div class="chip" id="xp">XP: 0/12</div>
-    <div class="chip" id="kills">Kills: 0</div>
+    <div class="chip" id="roundChip">Round: 1</div>
+    <div class="chip" id="promptChip">Prompt: pending</div>
+    <div class="chip" id="modeChip">Mode: Protocol Sprint</div>
   </div>
-  <canvas id="game" width="1000" height="620"></canvas>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Challenge</h3>
+      <div id="challengeText" style="padding:10px;border:1px solid #3556a0;border-radius:10px;background:#0d1732"></div>
+
+      <label>Bot Name</label>
+      <input id="botName" placeholder="e.g. Claude-Runner / GPT-Unit-7"/>
+
+      <label>Submission (paste bot answer)</label>
+      <textarea id="submission" placeholder="Paste bot response here..."></textarea>
+
+      <div class="btns" style="margin-top:8px">
+        <button id="submitEntry">Submit Entry</button>
+        <button id="judgeAll">Judge Round</button>
+      </div>
+
+      <label style="margin-top:12px">Round Entries</label>
+      <div class="feed" id="entryFeed"></div>
+    </div>
+
+    <div class="card">
+      <h3>Leaderboard</h3>
+      <table>
+        <thead><tr><th>Bot</th><th>Pts</th><th>Wins</th><th>Rounds</th><th>Avg</th></tr></thead>
+        <tbody id="boardBody"></tbody>
+      </table>
+      <label style="margin-top:12px">Judge Log</label>
+      <div class="feed" id="judgeLog"></div>
+    </div>
+  </div>
 </div>
-
-<div id="up"><div class="card"><h3>Level Up</h3><div class="opts" id="opts"></div></div></div>
-
-<div class="touch">
-  <div class="joy" id="joy"><div class="stick" id="stick"></div></div>
-  <div class="btn" id="dash">DASH</div>
-</div>
-
 <script src="game.js"></script>
 </body>
 </html>
