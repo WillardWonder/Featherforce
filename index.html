@@ -1,53 +1,87 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Feather Rift Survivors</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Featherforce Diagnostic + Game</title>
   <style>
-    :root{--bg:#070b17;--panel:#101a33;--line:#2d4684;--txt:#ecf2ff;--good:#34d399;--warn:#f59e0b}
-    *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 700px at 50% -20%,#304d86 0,#111d38 45%,#080d18 100%);color:var(--txt);font-family:Inter,system-ui}
-    #hud{position:fixed;left:10px;top:10px;z-index:30;display:flex;gap:8px;flex-wrap:wrap}
-    .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:13px}
-    #game{width:100vw;height:100vh}
-    #levelup{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;place-items:center;z-index:40}
-    .card{width:min(680px,92vw);background:#0d1730;border:1px solid #3a5aa8;border-radius:14px;padding:16px}
-    .opts{display:grid;grid-template-columns:1fr;gap:10px}
-    .opt{background:#122044;border:1px solid #4164b8;border-radius:12px;padding:12px;cursor:pointer}
-    .opt:hover{filter:brightness(1.12)}
-
-    .touch{position:fixed;inset:0;pointer-events:none;z-index:35}
-    .joy{position:absolute;left:14px;bottom:14px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);pointer-events:auto;touch-action:none}
-    .stick{position:absolute;left:45px;top:45px;width:40px;height:40px;border-radius:50%;background:rgba(73,164,255,.95)}
-    .btn{position:absolute;right:14px;bottom:20px;width:86px;height:86px;border-radius:50%;display:grid;place-items:center;font-weight:900;background:rgba(255,90,103,.9);border:1px solid rgba(255,255,255,.35);pointer-events:auto;touch-action:none}
-    @media (min-width: 1024px){ .touch{display:none} }
+    body{margin:0;background:#060b18;color:#eaf2ff;font-family:system-ui}
+    #log{position:fixed;left:0;right:0;top:0;max-height:40vh;overflow:auto;background:#0c1530;border-bottom:1px solid #3658a4;padding:8px 10px;font-size:12px;z-index:99;white-space:pre-wrap}
+    #game{display:block;width:100vw;height:100vh}
+    .ok{color:#7ee787}.err{color:#ff7b72}
   </style>
-  <!-- Open-source deps -->
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
 </head>
 <body>
-  <div id="hud">
-    <div class="chip" id="hp">HP: 100</div>
-    <div class="chip" id="lvl">Level: 1</div>
-    <div class="chip" id="xp">XP: 0/10</div>
-    <div class="chip" id="time">Time: 0s</div>
-    <div class="chip" id="kills">Kills: 0</div>
-  </div>
+<div id="log">Booting…</div>
+<canvas id="game" width="1060" height="600"></canvas>
+<script>
+const logEl=document.getElementById('log');
+function log(msg,cls=''){const d=document.createElement('div');if(cls)d.className=cls;d.textContent=msg;logEl.appendChild(d);}
+window.onerror=(m,s,l,c,e)=>{log('JS ERROR: '+m+' @'+l+':'+c,'err');};
+window.onunhandledrejection=(e)=>{log('PROMISE ERROR: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason)),'err');};
 
-  <div id="levelup">
-    <div class="card">
-      <h3 style="margin:2px 0 12px">Level Up — choose one</h3>
-      <div class="opts" id="opts"></div>
-    </div>
-  </div>
+(function(){
+  try{
+    log('Starting pure-canvas fallback…','ok');
+    const c=document.getElementById('game');
+    const x=c.getContext('2d');
+    if(!x){log('No 2D context available','err'); return;}
 
-  <div class="touch" id="touch">
-    <div class="joy" id="joy"><div class="stick" id="stick"></div></div>
-    <div class="btn" id="dash">DASH</div>
-  </div>
+    let t=0;
+    const S={x:180,y:300,vx:0,score:0,hp:5,keys:{},touch:{l:false,r:false,j:false,f:false},bul:[],en:[]};
 
-  <div id="game"></div>
-  <script src="game.js"></script>
+    // controls overlay
+    const mkBtn=(id,text,left)=>{const b=document.createElement('button');b.id=id;b.textContent=text;b.style.cssText=`position:fixed;bottom:14px;${left?`left:${left}px`:`right:${Math.abs(left)}px`};width:74px;height:74px;border-radius:50%;z-index:98;background:#1b376f;color:#fff;border:1px solid #6ea2ff;font-weight:800`;document.body.appendChild(b);return b;};
+    const l=mkBtn('l','◀',14),r=mkBtn('r','▶',96),j=mkBtn('j','JUMP',-96),f=mkBtn('f','FIRE',-14);
+
+    const bind=(el,key)=>{el.addEventListener('touchstart',e=>{S.touch[key]=true;e.preventDefault();},{passive:false});el.addEventListener('touchend',e=>{S.touch[key]=false;e.preventDefault();},{passive:false});el.addEventListener('mousedown',()=>S.touch[key]=true);window.addEventListener('mouseup',()=>S.touch[key]=false);};
+    bind(l,'l');bind(r,'r');bind(j,'j');bind(f,'f');
+    window.addEventListener('keydown',e=>S.keys[e.key]=true);
+    window.addEventListener('keyup',e=>S.keys[e.key]=false);
+
+    function spawn(){S.en.push({x:1060+Math.random()*300,y:220+Math.random()*280,v:3+Math.random()*2,hp:2});}
+    let spawnCd=0,fireCd=0;
+
+    function step(){
+      t++;
+      // update
+      const L=S.keys['a']||S.keys['ArrowLeft']||S.touch.l;
+      const R=S.keys['d']||S.keys['ArrowRight']||S.touch.r;
+      const F=S.keys['j']||S.keys[' ']||S.touch.f;
+      if(L)S.x-=4; if(R)S.x+=4; S.x=Math.max(40,Math.min(400,S.x));
+      if(F&&fireCd<=0){S.bul.push({x:S.x+26,y:S.y-6,v:10}); fireCd=10;} if(fireCd>0)fireCd--;
+
+      if(spawnCd--<=0){spawn(); spawnCd=30;}
+      for(const b of S.bul)b.x+=b.v;
+      for(const e of S.en)e.x-=e.v;
+      for(const e of S.en){for(const b of S.bul){if(Math.abs(e.x-b.x)<20&&Math.abs(e.y-b.y)<20){e.hp--;b.dead=true;if(e.hp<=0){e.dead=true;S.score+=100;}}} if(Math.abs(e.x-S.x)<20&&Math.abs(e.y-S.y)<24){e.dead=true;S.hp--;}}
+      S.bul=S.bul.filter(b=>!b.dead&&b.x<1200); S.en=S.en.filter(e=>!e.dead&&e.x>-80);
+
+      // draw
+      x.fillStyle='#081022'; x.fillRect(0,0,1060,600);
+      x.fillStyle='rgba(255,255,255,.2)'; x.font='18px sans-serif'; x.fillText('Featherforce fallback active',18,28);
+      x.fillStyle='#1b2f58'; x.fillRect(0,500,1060,100);
+
+      // bird
+      x.fillStyle='#2f6fc0'; x.beginPath(); x.moveTo(S.x-14,S.y-4); x.lineTo(S.x-30,S.y-10); x.lineTo(S.x-26,S.y+6); x.closePath(); x.fill();
+      x.fillStyle='#49a4ff'; x.beginPath(); x.ellipse(S.x,S.y,20,13,0,0,Math.PI*2); x.fill();
+      x.fillStyle='#ffd166'; x.beginPath(); x.moveTo(S.x+15,S.y-5); x.lineTo(S.x+28,S.y-2); x.lineTo(S.x+15,S.y+1); x.closePath(); x.fill();
+
+      x.fillStyle='#ffd166'; for(const b of S.bul)x.fillRect(b.x-3,b.y-2,6,4);
+      x.fillStyle='#ff5a67'; for(const e of S.en){x.beginPath();x.arc(e.x,e.y,12,0,Math.PI*2);x.fill();}
+
+      x.fillStyle='#fff'; x.font='16px sans-serif'; x.fillText('Score: '+S.score,18,52); x.fillText('HP: '+S.hp,140,52);
+      if(S.hp<=0){x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,0,1060,600);x.fillStyle='#fff';x.font='56px sans-serif';x.fillText('GAME OVER',360,300);}
+
+      requestAnimationFrame(step);
+    }
+
+    log('Init complete — game loop started','ok');
+    step();
+  }catch(err){
+    log('BOOT FAILURE: '+(err&&err.message?err.message:String(err)),'err');
+  }
+})();
+</script>
 </body>
 </html>
