@@ -1,14 +1,12 @@
-# Liar's Market
+# Featherforce Arena (Brotato-style)
 
-A non-shooter social bluff + market manipulation strategy game.
+Fast top-down arena survival inspired by Brotato pacing:
+- Auto-fire
+- Enemy swarms
+- XP + level-up choices
+- Dash + movement scaling
+- Mobile touch + keyboard support
 
-## Gameplay
-- Trade 4 rumor-driven assets
-- Use influence actions (Pump, Smear, Bribe, Ally)
-- Manage Heat to avoid freeze-out
-- Survive 14 days and maximize net worth
-
-## Why this build
-- Full pivot away from shooter genre
-- Mobile-friendly UI
-- No external dependencies required
+Controls:
+- Keyboard: WASD/Arrows move, Shift dash
+- Mobile: joystick + Dash
