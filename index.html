@@ -3,85 +3,78 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Featherforce Diagnostic + Game</title>
+  <title>Liar's Market</title>
   <style>
-    body{margin:0;background:#060b18;color:#eaf2ff;font-family:system-ui}
-    #log{position:fixed;left:0;right:0;top:0;max-height:40vh;overflow:auto;background:#0c1530;border-bottom:1px solid #3658a4;padding:8px 10px;font-size:12px;z-index:99;white-space:pre-wrap}
-    #game{display:block;width:100vw;height:100vh}
-    .ok{color:#7ee787}.err{color:#ff7b72}
+    :root{--bg:#0b1020;--panel:#121a33;--line:#344a86;--txt:#eaf1ff;--good:#34d399;--bad:#fb7185;--gold:#fbbf24}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 800px at 50% -20%,#2e4a83 0,#111a33 50%,#090e1b 100%);color:var(--txt);font-family:Inter,system-ui}
+    .wrap{max-width:980px;margin:14px auto;padding:0 12px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .brand{font-weight:900;letter-spacing:.4px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:13px}
+    .grid{display:grid;grid-template-columns:1.3fr .9fr;gap:12px}
+    @media (max-width:860px){.grid{grid-template-columns:1fr}}
+    .card{background:rgba(16,24,48,.92);border:1px solid #3a5aa2;border-radius:14px;padding:12px}
+    h3{margin:0 0 10px}
+    .market{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .asset{border:1px solid #3b5a9f;background:#0e1834;border-radius:12px;padding:10px}
+    .asset .name{font-weight:700}
+    .asset .row{display:flex;justify-content:space-between;font-size:13px;opacity:.92;margin-top:4px}
+    .btns{display:flex;gap:6px;margin-top:8px}
+    button{background:#1a2d5c;border:1px solid #5a80d6;color:#fff;border-radius:10px;padding:7px 9px;font-weight:700;cursor:pointer}
+    button:hover{filter:brightness(1.1)}
+    button.ghost{background:#13203f;border-color:#3d5faa}
+    .feed{max-height:340px;overflow:auto;border:1px solid #324f8f;border-radius:12px;padding:8px;background:#0d1732}
+    .item{padding:8px;border-bottom:1px solid #203567;font-size:13px}
+    .item:last-child{border-bottom:none}
+    .up{color:var(--good)} .down{color:var(--bad)} .warn{color:var(--gold)}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .big{padding:10px}
   </style>
 </head>
 <body>
-<div id="log">Booting…</div>
-<canvas id="game" width="1060" height="600"></canvas>
-<script>
-const logEl=document.getElementById('log');
-function log(msg,cls=''){const d=document.createElement('div');if(cls)d.className=cls;d.textContent=msg;logEl.appendChild(d);}
-window.onerror=(m,s,l,c,e)=>{log('JS ERROR: '+m+' @'+l+':'+c,'err');};
-window.onunhandledrejection=(e)=>{log('PROMISE ERROR: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason)),'err');};
+<div class="wrap">
+  <div class="top">
+    <div class="brand">LIAR'S MARKET // influence beats truth</div>
+    <button id="newRun">New Run</button>
+  </div>
 
-(function(){
-  try{
-    log('Starting pure-canvas fallback…','ok');
-    const c=document.getElementById('game');
-    const x=c.getContext('2d');
-    if(!x){log('No 2D context available','err'); return;}
+  <div class="chips">
+    <div class="chip" id="dayChip">Day: 1/14</div>
+    <div class="chip" id="cashChip">Cash: $1200</div>
+    <div class="chip" id="infChip">Influence: 10</div>
+    <div class="chip" id="heatChip">Heat: 0</div>
+    <div class="chip" id="netChip">Net Worth: $1200</div>
+  </div>
 
-    let t=0;
-    const S={x:180,y:300,vx:0,score:0,hp:5,keys:{},touch:{l:false,r:false,j:false,f:false},bul:[],en:[]};
+  <div class="grid">
+    <div class="card">
+      <h3>Market Board</h3>
+      <div class="market" id="market"></div>
+    </div>
 
-    // controls overlay
-    const mkBtn=(id,text,left)=>{const b=document.createElement('button');b.id=id;b.textContent=text;b.style.cssText=`position:fixed;bottom:14px;${left?`left:${left}px`:`right:${Math.abs(left)}px`};width:74px;height:74px;border-radius:50%;z-index:98;background:#1b376f;color:#fff;border:1px solid #6ea2ff;font-weight:800`;document.body.appendChild(b);return b;};
-    const l=mkBtn('l','◀',14),r=mkBtn('r','▶',96),j=mkBtn('j','JUMP',-96),f=mkBtn('f','FIRE',-14);
+    <div class="card">
+      <h3>Street Feed</h3>
+      <div class="feed" id="feed"></div>
+    </div>
 
-    const bind=(el,key)=>{el.addEventListener('touchstart',e=>{S.touch[key]=true;e.preventDefault();},{passive:false});el.addEventListener('touchend',e=>{S.touch[key]=false;e.preventDefault();},{passive:false});el.addEventListener('mousedown',()=>S.touch[key]=true);window.addEventListener('mouseup',()=>S.touch[key]=false);};
-    bind(l,'l');bind(r,'r');bind(j,'j');bind(f,'f');
-    window.addEventListener('keydown',e=>S.keys[e.key]=true);
-    window.addEventListener('keyup',e=>S.keys[e.key]=false);
+    <div class="card">
+      <h3>Influence Actions</h3>
+      <div class="actions">
+        <button class="big" id="hype">Pump rumor (+price / +heat)</button>
+        <button class="big" id="smear">Smear rival (-price / +heat)</button>
+        <button class="big ghost" id="bribe">Bribe inspector (-heat / -cash)</button>
+        <button class="big ghost" id="ally">Build alliance (+influence / small cost)</button>
+      </div>
+      <p style="opacity:.9;font-size:13px;margin:10px 0 0">If Heat hits 100, regulators freeze you out and the run ends.</p>
+    </div>
 
-    function spawn(){S.en.push({x:1060+Math.random()*300,y:220+Math.random()*280,v:3+Math.random()*2,hp:2});}
-    let spawnCd=0,fireCd=0;
-
-    function step(){
-      t++;
-      // update
-      const L=S.keys['a']||S.keys['ArrowLeft']||S.touch.l;
-      const R=S.keys['d']||S.keys['ArrowRight']||S.touch.r;
-      const F=S.keys['j']||S.keys[' ']||S.touch.f;
-      if(L)S.x-=4; if(R)S.x+=4; S.x=Math.max(40,Math.min(400,S.x));
-      if(F&&fireCd<=0){S.bul.push({x:S.x+26,y:S.y-6,v:10}); fireCd=10;} if(fireCd>0)fireCd--;
-
-      if(spawnCd--<=0){spawn(); spawnCd=30;}
-      for(const b of S.bul)b.x+=b.v;
-      for(const e of S.en)e.x-=e.v;
-      for(const e of S.en){for(const b of S.bul){if(Math.abs(e.x-b.x)<20&&Math.abs(e.y-b.y)<20){e.hp--;b.dead=true;if(e.hp<=0){e.dead=true;S.score+=100;}}} if(Math.abs(e.x-S.x)<20&&Math.abs(e.y-S.y)<24){e.dead=true;S.hp--;}}
-      S.bul=S.bul.filter(b=>!b.dead&&b.x<1200); S.en=S.en.filter(e=>!e.dead&&e.x>-80);
-
-      // draw
-      x.fillStyle='#081022'; x.fillRect(0,0,1060,600);
-      x.fillStyle='rgba(255,255,255,.2)'; x.font='18px sans-serif'; x.fillText('Featherforce fallback active',18,28);
-      x.fillStyle='#1b2f58'; x.fillRect(0,500,1060,100);
-
-      // bird
-      x.fillStyle='#2f6fc0'; x.beginPath(); x.moveTo(S.x-14,S.y-4); x.lineTo(S.x-30,S.y-10); x.lineTo(S.x-26,S.y+6); x.closePath(); x.fill();
-      x.fillStyle='#49a4ff'; x.beginPath(); x.ellipse(S.x,S.y,20,13,0,0,Math.PI*2); x.fill();
-      x.fillStyle='#ffd166'; x.beginPath(); x.moveTo(S.x+15,S.y-5); x.lineTo(S.x+28,S.y-2); x.lineTo(S.x+15,S.y+1); x.closePath(); x.fill();
-
-      x.fillStyle='#ffd166'; for(const b of S.bul)x.fillRect(b.x-3,b.y-2,6,4);
-      x.fillStyle='#ff5a67'; for(const e of S.en){x.beginPath();x.arc(e.x,e.y,12,0,Math.PI*2);x.fill();}
-
-      x.fillStyle='#fff'; x.font='16px sans-serif'; x.fillText('Score: '+S.score,18,52); x.fillText('HP: '+S.hp,140,52);
-      if(S.hp<=0){x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,0,1060,600);x.fillStyle='#fff';x.font='56px sans-serif';x.fillText('GAME OVER',360,300);}
-
-      requestAnimationFrame(step);
-    }
-
-    log('Init complete — game loop started','ok');
-    step();
-  }catch(err){
-    log('BOOT FAILURE: '+(err&&err.message?err.message:String(err)),'err');
-  }
-})();
-</script>
+    <div class="card">
+      <h3>Advance Day</h3>
+      <button id="nextDay" class="big" style="width:100%">Resolve Day</button>
+    </div>
+  </div>
+</div>
+<script src="game.js"></script>
 </body>
 </html>
